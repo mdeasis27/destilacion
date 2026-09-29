@@ -1,0 +1,31 @@
+{
+  "costModel": {
+    "gpuMonthlyCost": 1800,
+    "tokensPerRequest": 1000,
+    "teacherPricePer1k": 0.006,
+    "studentMarginalPer1k": 0
+  },
+  "breakEven": {
+    "teacherCostPerRequest": 0.006,
+    "studentMarginalPerRequest": 0,
+    "breakEvenVolume": 300000
+  },
+  "totalCost": [
+    { "volume": 100000, "teacherTotal": 600, "studentTotal": 1800 },
+    { "volume": 300000, "teacherTotal": 1800, "studentTotal": 1800 },
+    { "volume": 1000000, "teacherTotal": 6000, "studentTotal": 1800 }
+  ],
+  "fieldAccuracy": [
+    {
+      "extracted": { "invoiceNumber": "A-1001", "date": "2024-01-15", "vendor": "Acme", "total": "1250.00", "currency": "USD" },
+      "gold": { "invoiceNumber": "A-1001", "date": "2024-01-15", "vendor": "Acme", "total": "1250.00", "currency": "USD" },
+      "accuracy": 1.0
+    },
+    {
+      "extracted": { "invoiceNumber": "A-1001", "date": "", "vendor": "Acme", "total": "1250.00", "currency": "USD" },
+      "gold": { "invoiceNumber": "A-1001", "date": "2024-01-15", "vendor": "Acme", "total": "1250.00", "currency": "USD" },
+      "accuracy": 0.8
+    }
+  ],
+  "expectedTestAccuracy": 0.9
+}

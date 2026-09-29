@@ -1,0 +1,80 @@
+[
+  {
+    "id": "inv-train-001",
+    "split": "train",
+    "text": "INV-2023-014\nDate: 2023-11-02\nVendor: Suministros Andinos S.A.\nTotal: $2,340.50 USD",
+    "gold": { "invoiceNumber": "INV-2023-014", "date": "2023-11-02", "vendor": "Suministros Andinos S.A.", "total": "2,340.50", "currency": "USD" }
+  },
+  {
+    "id": "inv-train-002",
+    "split": "train",
+    "text": "FACT-2023-027\nDate: 2023-11-14\nVendor: Logística del Sur Ltda.\nTotal: $890.00 USD",
+    "gold": { "invoiceNumber": "FACT-2023-027", "date": "2023-11-14", "vendor": "Logística del Sur Ltda.", "total": "890.00", "currency": "USD" }
+  },
+  {
+    "id": "inv-train-003",
+    "split": "train",
+    "text": "INV-2023-101\nDate: 2023-12-01\nVendor: Papelería Central\nTotal: $1,120.75 USD",
+    "gold": { "invoiceNumber": "INV-2023-101", "date": "2023-12-01", "vendor": "Papelería Central", "total": "1,120.75", "currency": "USD" }
+  },
+  {
+    "id": "inv-train-004",
+    "split": "train",
+    "text": "FAC-2023-205\nDate: 2023-12-19\nVendor: Transportes del Norte S.A.\nTotal: $4,500.00 USD",
+    "gold": { "invoiceNumber": "FAC-2023-205", "date": "2023-12-19", "vendor": "Transportes del Norte S.A.", "total": "4,500.00", "currency": "USD" }
+  },
+  {
+    "id": "inv-train-005",
+    "split": "train",
+    "text": "INV-2023-310\nDate: 2024-01-08\nVendor: Ferretería El Roble\nTotal: $675.25 USD",
+    "gold": { "invoiceNumber": "INV-2023-310", "date": "2024-01-08", "vendor": "Ferretería El Roble", "total": "675.25", "currency": "USD" }
+  },
+  {
+    "id": "inv-train-006",
+    "split": "train",
+    "text": "FAC-2024-011\nDate: 2024-02-05\nVendor: Importadora Costa Azul\nTotal: $2,980.00 USD",
+    "gold": { "invoiceNumber": "FAC-2024-011", "date": "2024-02-05", "vendor": "Importadora Costa Azul", "total": "2,980.00", "currency": "USD" }
+  },
+  {
+    "id": "inv-val-001",
+    "split": "val",
+    "text": "INV-2024-045\nDate: 2024-02-12\nVendor: Clínica San Rafael\nTotal: $1,450.00 USD",
+    "gold": { "invoiceNumber": "INV-2024-045", "date": "2024-02-12", "vendor": "Clínica San Rafael", "total": "1,450.00", "currency": "USD" }
+  },
+  {
+    "id": "inv-val-002",
+    "split": "val",
+    "text": "FAC-2024-078\nDate: 2024-02-21\nVendor: Distribuidora Andina\nTotal: $3,600.00 USD",
+    "gold": { "invoiceNumber": "FAC-2024-078", "date": "2024-02-21", "vendor": "Distribuidora Andina", "total": "3,600.00", "currency": "USD" }
+  },
+  {
+    "id": "inv-val-003",
+    "split": "val",
+    "text": "INV-2024-120\nDate: 2024-03-01\nVendor: Comercial Los Andes\nTotal: $1,890.75 USD",
+    "gold": { "invoiceNumber": "INV-2024-120", "date": "2024-03-01", "vendor": "Comercial Los Andes", "total": "1,890.75", "currency": "USD" }
+  },
+  {
+    "id": "inv-test-001",
+    "split": "test",
+    "text": "INV-2024-001\nDate: 2024-01-15\nVendor: Acme Corp\nTotal: $1250.00 USD",
+    "gold": { "invoiceNumber": "INV-2024-001", "date": "2024-01-15", "vendor": "Acme Corp", "total": "1250.00", "currency": "USD" }
+  },
+  {
+    "id": "inv-test-002",
+    "split": "test",
+    "text": "FAC-2024-002\nDate: 15/01/2024\nVendor: Globex S.A.\nTotal: $980.50 USD",
+    "gold": { "invoiceNumber": "FAC-2024-002", "date": "15/01/2024", "vendor": "Globex S.A.", "total": "980.50", "currency": "USD" }
+  },
+  {
+    "id": "inv-test-003",
+    "split": "test",
+    "text": "INV-2024-003\nDate: 2024-02-20\nACME HOLDINGS LLC\nTotal: $3,210.75 USD",
+    "gold": { "invoiceNumber": "INV-2024-003", "date": "2024-02-20", "vendor": "ACME HOLDINGS LLC", "total": "3,210.75", "currency": "USD" }
+  },
+  {
+    "id": "inv-test-004",
+    "split": "test",
+    "text": "INV-2024-004\nDate: 2024-03-10\nVendor: Initech\nTotal: $450.00 EUR",
+    "gold": { "invoiceNumber": "INV-2024-004", "date": "2024-03-10", "vendor": "Initech", "total": "450.00", "currency": "EUR" }
+  }
+]
