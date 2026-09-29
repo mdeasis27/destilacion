@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Alert } from "@/design-system/components/alert";
 import { Card } from "@/design-system/components/card";
@@ -7,8 +8,12 @@ import { MetricCard } from "@/design-system/components/metric-card";
 import { Meter } from "@/design-system/components/meter";
 import { StatusBadge } from "@/design-system/components/status-badge";
 import { getComparison } from "@/lib/destilacion/demo";
+import { extractInvoice } from "@/lib/destilacion/extract";
+import type { InvoiceDocument, InvoiceFields } from "@/lib/destilacion/types";
+import documents from "@/lib/destilacion/data/documents.json";
 
 const DATA = getComparison();
+const DOCS = documents as readonly InvoiceDocument[];
 
 const FIELD_LABELS: Record<string, string> = {
   invoiceNumber: "Nº factura",
@@ -26,6 +31,15 @@ export default function AppPage() {
   const latency = DATA.latency;
   const be = cost.breakEvenVolume;
   const maxSeriesTeacher = Math.max(...DATA.series.map((p) => p.teacher), cost.gpuMonthlyCost);
+
+  const [text, setText] = useState(DOCS[0].text);
+  const [result, setResult] = useState<{ fields: InvoiceFields; gold: InvoiceFields | null } | null>(null);
+
+  function run() {
+    const fields = extractInvoice(text);
+    const gold = DOCS.find((d) => d.text === text)?.gold ?? null;
+    setResult({ fields, gold });
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,6 +104,68 @@ export default function AppPage() {
             tone="success"
           />
         </div>
+
+        {/* ── PLAYGROUND ──────────────────────── */}
+        <section>
+          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Extracción en vivo</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            Pega el texto de una factura y ejecuta el extractor determinista (el proxy del
+            student). Si el texto coincide con un documento etiquetado, compara cada campo
+            contra su gold.
+          </p>
+
+          <Card className="p-5 space-y-4">
+            <div className="space-y-1">
+              <span className="text-sm text-foreground">Texto de la factura</span>
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={6}
+                className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+              />
+            </div>
+            <button
+              onClick={run}
+              className="w-full rounded-[var(--radius-md)] bg-accent px-4 py-2.5 text-sm font-medium text-[#ffffff] hover:bg-accent/90 transition-colors"
+            >
+              Extraer campos
+            </button>
+          </Card>
+
+          {result && (
+            <Card className="mt-4 p-5">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {FIELDS.map((key) => {
+                  const value = result.fields[key as keyof InvoiceFields];
+                  const gold = result.gold ? result.gold[key as keyof InvoiceFields] : null;
+                  const hasGold = result.gold !== null;
+                  const match = hasGold && value === gold;
+                  return (
+                    <div key={key} className="rounded-[var(--radius-md)] border border-[var(--border)] p-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{FIELD_LABELS[key]}</p>
+                      <p className="text-sm font-medium text-foreground break-words">{value || "—"}</p>
+                      <div className="mt-2">
+                        {hasGold ? (
+                          <StatusBadge tone={match ? "success" : "danger"} dot>
+                            {match ? "coincide" : "difiere"}
+                          </StatusBadge>
+                        ) : (
+                          <StatusBadge tone="neutral">sin referencia</StatusBadge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {result.gold && (
+                <p className="mt-4 text-xs text-muted-foreground">
+                  Comparado contra el gold del documento etiquetado. Edita el texto para que deje
+                  de coincidir con un documento conocido y verás los campos sin referencia.
+                </p>
+              )}
+            </Card>
+          )}
+        </section>
 
         {/* ── QUALITY ─────────────────────────── */}
         <section>
