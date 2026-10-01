@@ -1,21 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Alert } from "@/design-system/components/alert";
 import { Card } from "@/design-system/components/card";
-import { MetricCard } from "@/design-system/components/metric-card";
-import { Meter } from "@/design-system/components/meter";
 import { StatusBadge } from "@/design-system/components/status-badge";
-import { getComparison } from "@/lib/destilacion/demo";
-import { extractInvoice } from "@/lib/destilacion/extract";
-import type { InvoiceDocument, InvoiceFields } from "@/lib/destilacion/types";
-import documents from "@/lib/destilacion/data/documents.json";
+import type { InvoiceFields } from "@/lib/destilacion/types";
 
-const DATA = getComparison();
-const DOCS = documents as readonly InvoiceDocument[];
+type FieldKey = keyof InvoiceFields;
 
-const FIELD_LABELS: Record<string, string> = {
+interface ExtractResult {
+  invoiceNumber?: string;
+  date?: string;
+  vendor?: string;
+  total?: string;
+  currency?: string;
+  error?: string;
+}
+
+interface HistoryItem {
+  id: number;
+  invoice_number: string;
+  vendor: string;
+  total: string;
+  currency: string;
+  created_at: string;
+}
+
+const PREFILL = `INV-2023-014
+Date: 2023-11-02
+Vendor: Suministros Andinos S.A.
+Total: $2,340.50 USD`;
+
+const FIELD_LABELS: Record<FieldKey, string> = {
   invoiceNumber: "Nº factura",
   date: "Fecha",
   vendor: "Vendedor",
@@ -23,23 +40,48 @@ const FIELD_LABELS: Record<string, string> = {
   currency: "Moneda",
 };
 
-const FIELDS = Object.keys(FIELD_LABELS);
+const FIELDS: FieldKey[] = ["invoiceNumber", "date", "vendor", "total", "currency"];
 
 export default function AppPage() {
-  const quality = DATA.quality;
-  const cost = DATA.cost;
-  const latency = DATA.latency;
-  const be = cost.breakEvenVolume;
-  const maxSeriesTeacher = Math.max(...DATA.series.map((p) => p.teacher), cost.gpuMonthlyCost);
+  const [text, setText] = useState(PREFILL);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ExtractResult | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  const [text, setText] = useState(DOCS[0].text);
-  const [result, setResult] = useState<{ fields: InvoiceFields; gold: InvoiceFields | null } | null>(null);
-
-  function run() {
-    const fields = extractInvoice(text);
-    const gold = DOCS.find((d) => d.text === text)?.gold ?? null;
-    setResult({ fields, gold });
+  async function run() {
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await fetch("/api/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      setResult(data);
+      if (res.ok) loadHistory();
+    } catch (err) {
+      setResult({ error: err instanceof Error ? err.message : "Error de red" });
+    } finally {
+      setLoading(false);
+    }
   }
+
+  async function loadHistory() {
+    try {
+      const res = await fetch("/api/history");
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data.extractions ?? []);
+      }
+    } catch {
+      /* history is best-effort */
+    }
+  }
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,231 +111,94 @@ export default function AppPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <StatusBadge tone="info" dot className="px-3 py-1">
-              Demo mode
+            <StatusBadge tone="success" dot className="px-3 py-1">
+              Postgres en vivo
             </StatusBadge>
           </div>
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-10">
-        {/* ── SUMMARY BAR ─────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <MetricCard
-            label="Student accuracy"
-            value={`${(quality.studentAccuracy * 100).toFixed(1)}%`}
-            hint="LoRA 8B proxy, medido"
-            tone={quality.studentAccuracy >= 0.9 ? "success" : "warning"}
-          />
-          <MetricCard
-            label="Teacher accuracy"
-            value={`${(quality.teacherAccuracy * 100).toFixed(1)}%`}
-            hint="frontier, precomputado"
-            tone="info"
-          />
-          <MetricCard
-            label="Break-even"
-            value={`${(be / 1000).toFixed(0)}k`}
-            hint="req/mes"
-            tone="success"
-          />
-          <MetricCard
-            label="Latencia ×"
-            value={`${latency.speedup.toFixed(0)}×`}
-            hint="más rápido self-host"
-            tone="success"
-          />
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+        <div className="max-w-3xl">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Extrae campos de una factura en vivo</h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            Pega el texto de una factura y ejecuta el extractor determinista (el proxy del
+            student). Los campos extraídos se <strong>persisten en Postgres</strong> y quedan
+            guardados en el historial.
+          </p>
         </div>
 
-        {/* ── PLAYGROUND ──────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Extracción en vivo</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            Pega el texto de una factura y ejecuta el extractor determinista (el proxy del
-            student). Si el texto coincide con un documento etiquetado, compara cada campo
-            contra su gold.
-          </p>
+        <Card className="p-5 space-y-4">
+          <div className="space-y-1">
+            <span className="text-sm text-foreground">Texto de la factura</span>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={6}
+              className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
+            />
+          </div>
+          <button
+            onClick={run}
+            disabled={loading}
+            className="w-full rounded-[var(--radius-md)] bg-accent px-4 py-2.5 text-sm font-medium text-[#ffffff] hover:bg-accent/90 transition-colors disabled:opacity-50"
+          >
+            {loading ? "Extrayendo…" : "Extraer campos"}
+          </button>
+        </Card>
 
-          <Card className="p-5 space-y-4">
-            <div className="space-y-1">
-              <span className="text-sm text-foreground">Texto de la factura</span>
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={6}
-                className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-background px-3 py-2 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
-              />
-            </div>
-            <button
-              onClick={run}
-              className="w-full rounded-[var(--radius-md)] bg-accent px-4 py-2.5 text-sm font-medium text-[#ffffff] hover:bg-accent/90 transition-colors"
-            >
-              Extraer campos
-            </button>
-          </Card>
+        {result && (
+          <div className="space-y-4">
+            {result.error && (
+              <Alert tone="danger" title="No se pudo extraer">{result.error}</Alert>
+            )}
 
-          {result && (
-            <Card className="mt-4 p-5">
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-                {FIELDS.map((key) => {
-                  const value = result.fields[key as keyof InvoiceFields];
-                  const gold = result.gold ? result.gold[key as keyof InvoiceFields] : null;
-                  const hasGold = result.gold !== null;
-                  const match = hasGold && value === gold;
-                  return (
+            {!result.error && (
+              <Card className="p-5">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                  {FIELDS.map((key) => (
                     <div key={key} className="rounded-[var(--radius-md)] border border-[var(--border)] p-4">
                       <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">{FIELD_LABELS[key]}</p>
-                      <p className="text-sm font-medium text-foreground break-words">{value || "—"}</p>
-                      <div className="mt-2">
-                        {hasGold ? (
-                          <StatusBadge tone={match ? "success" : "danger"} dot>
-                            {match ? "coincide" : "difiere"}
-                          </StatusBadge>
-                        ) : (
-                          <StatusBadge tone="neutral">sin referencia</StatusBadge>
-                        )}
-                      </div>
+                      <p className="text-sm font-medium text-foreground break-words">{result[key] || "—"}</p>
                     </div>
-                  );
-                })}
-              </div>
-              {result.gold && (
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Comparado contra el gold del documento etiquetado. Edita el texto para que deje
-                  de coincidir con un documento conocido y verás los campos sin referencia.
-                </p>
-              )}
-            </Card>
-          )}
-        </section>
-
-        {/* ── QUALITY ─────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Calidad (exact-match por campo)</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            El student se mide corriendo el extractor determinista sobre el split de test
-            (intacto); el teacher es una constante precomputada y documentada. La brecha de{" "}
-            {quality.deltaPp.toFixed(1)}pp es el precio del ahorro.
-          </p>
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-5">
-            {FIELDS.map((key) => {
-              const stat = DATA.byField[key as keyof typeof DATA.byField];
-              return (
-                <Card key={key} className="p-4 text-center">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{FIELD_LABELS[key]}</p>
-                  <p className="text-2xl font-semibold tabular-nums text-foreground">
-                    {(stat.accuracy * 100).toFixed(0)}%
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{stat.correct}/{stat.total}</p>
-                </Card>
-              );
-            })}
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
-        </section>
+        )}
 
-        {/* ── COST + BREAK-EVEN ───────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Coste y break-even</h2>
-          <p className="text-sm text-muted-foreground mb-5">
-            Self-host no es &quot;más barato por token&quot; — es un coste fijo de{" "}
-            <span className="text-foreground">${cost.gpuMonthlyCost}/mes</span> (1× GPU). Gana solo
-            cuando el volumen supera el punto donde la factura fija es menor que el API.
-          </p>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Teacher / 1k</p>
-              <p className="text-2xl font-semibold tabular-nums text-foreground">
-                ${(cost.teacherPer1k * 1000).toFixed(0)}<span className="text-sm text-muted-foreground">/1M</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">${cost.teacherPer1k.toFixed(4)}/1k · ${cost.teacherPerRequest.toFixed(3)}/req</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Self-host fijo</p>
-              <p className="text-2xl font-semibold tabular-nums text-foreground">
-                ${cost.gpuMonthlyCost.toLocaleString()}<span className="text-sm text-muted-foreground">/mes</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">marginal ≈ $0/1k (GPU ya pagada)</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">Break-even</p>
-              <p className="text-2xl font-semibold tabular-nums text-foreground">
-                {(be / 1000).toFixed(0)}k<span className="text-sm text-muted-foreground"> req/mes</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">por debajo, el API gana</p>
-            </Card>
-          </div>
-
-          <Card className="mt-5 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-4">
-              Coste mensual total por volumen (USD)
-            </p>
-            <div className="space-y-3">
-              {DATA.series.map((point) => {
-                const isBreakEven = point.volume === be;
-                const teacherPct = (point.teacher / maxSeriesTeacher) * 100;
-                const studentPct = (point.student / maxSeriesTeacher) * 100;
-                return (
-                  <div key={point.volume} className="space-y-1">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span className="tabular-nums">{(point.volume / 1000).toFixed(0)}k req/mes</span>
-                      <span className="tabular-nums">
-                        teacher ${point.teacher.toLocaleString()} · self-host ${point.student.toLocaleString()}
-                        {isBreakEven && <span className="ml-2 text-warning font-semibold">break-even</span>}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <div className="h-2 rounded-[var(--radius-pill)] bg-info" style={{ width: `${teacherPct}%` }} title="teacher" />
-                    </div>
-                    <div className="flex gap-1">
-                      <div className="h-2 rounded-[var(--radius-pill)] bg-success" style={{ width: `${studentPct}%` }} title="self-host" />
-                    </div>
-                  </div>
-                );
-              })}
+        {history.length > 0 && (
+          <section>
+            <h3 className="text-sm font-semibold text-foreground mb-3">Historial de extracciones (persistido en Postgres)</h3>
+            <div className="overflow-x-auto rounded-[var(--radius-md)] shadow-[var(--shadow-card)] bg-card">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--gray-50)]">
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Factura</th>
+                    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Vendedor</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Total</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Moneda</th>
+                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {history.map((h) => (
+                    <tr key={h.id}>
+                      <td className="px-4 py-2.5 font-mono text-xs text-foreground">{h.invoice_number}</td>
+                      <td className="px-4 py-2.5 text-foreground">{h.vendor}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums text-foreground">{h.total}</td>
+                      <td className="px-4 py-2.5 text-right text-foreground">{h.currency}</td>
+                      <td className="px-4 py-2.5 text-right text-xs text-muted-foreground">
+                        {new Date(h.created_at).toLocaleString("es-ES")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-2 rounded-full bg-info" /> Teacher (API)</span>
-              <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-2 rounded-full bg-success" /> Self-host (GPU fijo)</span>
-            </div>
-          </Card>
-        </section>
-
-        {/* ── LATENCY ─────────────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Latencia p95</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Card className="p-5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-foreground">Teacher (API round-trip)</span>
-                <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">{latency.teacherP95Ms}ms</span>
-              </div>
-              <Meter className="mt-4" value={latency.teacherP95Ms} max={latency.teacherP95Ms} tone="info" />
-            </Card>
-            <Card className="p-5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-foreground">Student (self-host 8B)</span>
-                <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">{latency.studentP95Ms}ms</span>
-              </div>
-              <Meter className="mt-4" value={latency.studentP95Ms} max={latency.teacherP95Ms} tone="success" />
-            </Card>
-          </div>
-        </section>
-
-        {/* ── SPLIT / LABELING ────────────────── */}
-        <section>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground mb-1">Split y labeling</h2>
-          <Alert tone="info" title="Test intacto">
-            {DATA.splitCounts.train} train · {DATA.splitCounts.val} val · {DATA.splitCounts.test} test. Las reglas del
-            extractor se escribieron sobre train/val; el split de test solo se usa para la medición final
-            (ver LABELING.md). El &quot;student&quot; de la demo es un extractor determinista, un proxy
-            documentado de un LoRA 8B real.
-          </Alert>
-        </section>
-
-        <footer className="pt-8 border-t border-[var(--border)] flex items-center justify-between text-xs text-muted-foreground">
-          <span>Destilación · LoRA vs frontier · Demo mode</span>
-          <a href="https://github.com/mdeasis27/destilacion" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors font-mono">GitHub</a>
-        </footer>
+          </section>
+        )}
       </div>
     </div>
   );
