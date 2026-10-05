@@ -1,109 +1,96 @@
-# Destilación
+# Extraction cost tradeoff
 
-**LoRA fine-tuning vs a frontier teacher on a strict-schema extraction task** —
-measured on quality, cost and latency, with the self-host break-even volume
-where the small model wins.
+[Español](README.es.md) · [Try the demo](https://destilacion-manueldeasis27-2515s-projects.vercel.app/en/app) · [Case study](https://manueldeasis.com/en/projects/destilacion) · [Source](https://github.com/mdeasis27/destilacion)
 
-> **Result:** A deterministic "student" proxy reaches **90.0% field exact-match
-> accuracy** (measured on the untouched test split) vs **97.5%** for a frontier
-> teacher, at **40× lower latency** and, past **300k requests/month**, lower
-> total cost. Below that volume, the API wins.
+![Actual interactive local interface](docs/images/cover.png)
 
----
+Edit an invoice and monthly request volume to compare extracted fields and cost crossover.
 
-## Result
+## Two situations to compare
 
-### Quality — field exact-match accuracy (test split, n = 20 fields)
+**Pilot:** 120000 requests API cost is lower.
 
-| Field | Student (LoRA proxy) | Teacher (frontier) |
-|---|---|---|
-| Nº factura | 100% | 100% |
-| Fecha | 75% | 100% |
-| Vendedor | 75% | 100% |
-| Total | 100% | 100% |
-| Moneda | 100% | 100% |
-| **Overall** | **90.0%** | **97.5%** |
+![Pilot](docs/images/scenario-a.png)
 
-The student's number is **real**: the deterministic extractor runs over the test
-split at page load. The teacher's number is a documented precomputed constant
-(a frontier model can't run offline). The 7.5pp gap is the honest price of
-self-hosting.
+**Scale:** 1000000 requests Local capacity is lower.
 
-### Cost — break-even at 300k requests/month
+![Scale](docs/images/scenario-b.png)
 
-| Metric | Teacher | Self-host |
-|---|---|---|
-| Price / 1k tokens | $6.00 / 1M | $0 (marginal) |
-| Fixed infra | — | $1,800 / mes (1× GPU) |
-| Cost / request | $0.006 | $0.000 + fixed |
+## Business use case
 
-Self-host is **not** "cheaper per token" — it's a fixed cost. It wins only above
-the volume where `gpuMonthlyCost / teacherCostPerRequest` is crossed:
+Extraction costs become opaque as volume changes.
 
+**Who uses it:** Product owner.
+
+**The decision:** Use an API rate or local capacity.
+
+Enter invoice evidence, choose a demand preset, then compare computed costs.
+
+### Try the decision
+
+**Pilot:** 120000 requests API cost is lower.
+
+**Scale:** 1000000 requests Local capacity is lower.
+
+Choose a scenario, edit its controls and run the local computation. Step through the visual process or reveal all steps. Reset before comparing the second scenario.
+
+## How to try it
+
+Open `/en/app` (English, default) or `/es/app` (Spanish). Change the scenario inputs and run the computation. Inspect the resulting decision, evidence and computed trace. Playback reveals completed local steps; it does not measure a live model. Reset starts a new local scenario. Changing language resets the scenario.
+
+The primary demo needs no account, API key or database. Public links refer to the existing deployment; local redesign changes are pending publication.
+
+<!-- recruiter-mission:start -->
+### Your interactive mission
+
+Try the exact break-even volume of 300,000 monthly requests, predict which option is cheaper, calculate and reveal the full trace.
+
+Compute API and local-capacity monthly costs for the same invoice and demand. At 300,000 requests both cost $1,800 under the illustrative assumptions; neither is cheaper. All calculations use integer cents.
+
+**Why this approach:** A transparent capacity model exposes the crossover before an infrastructure decision. Rule-based extraction is a student proxy and does not demonstrate a trained distilled model or equal extraction quality.
+
+**Before production:** Measure labeled-invoice quality, real throughput, utilization, operating expenses and data privacy. The illustrative $6 per 1,000 requests and $1,800 monthly capacity exclude maintenance, staffing and quality differences.
+
+Editing inputs, choosing a preset or resetting clears the prediction and obsolete results. Comparisons appear only at completed playback; the primary demos need no account or key.
+
+The mission pilot updates this implementation. Existing screenshots and browser reports document the previous stage; fresh browser interaction checks and captures are pending because the current environment blocked them.
+![Recorded comparison from the previous stage](docs/images/mission.png)
+<!-- recruiter-mission:end -->
+
+## Local setup and verification
+
+Requires Node.js 22 and pnpm 10.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+pnpm test
+node node_modules/typescript/bin/tsc --noEmit --incremental false
+pnpm lint
+pnpm build
 ```
-breakEvenVolume = 1800 / 0.006 = 300,000 requests/month
-```
 
-### Latency — p95
-
-| | Teacher (API) | Student (self-host) |
-|---|---|---|
-| p95 | 1,800 ms | 45 ms |
-| Speedup | — | **40×** |
-
----
+Open `http://localhost:3000/en/app`. Recorded validation covers tests, lint, TypeScript and production builds. See [command results](docs/quality/decision-lab-verification.json) and [browser component checks](docs/quality/decision-lab-browser.json). The new browser checks exercise real React components and production CSS with controlled locale navigation; they do not certify Next routes or public deployment.
 
 ## Architecture
 
-```
-lib/destilacion/       # core (TypeScript, tested)
-  extract.ts            #   deterministic rule-based extractor (student proxy)
-  metrics.ts            #   field exact-match accuracy (per field + overall)
-  breakeven.ts          #   self-host vs teacher cost + break-even volume
-  demo.ts               #   wires test split → comparison → break-even series
-  data/documents.json   #   labeled invoices (train/val/test, committed)
-  fixtures/breakEven.json # shared math pinned for both languages
-backend/                # same math in Python + pytest (authoritative)
-  src/destilacion/
-  tests/                #   pinned to tests/fixtures/{breakEven,documents}.json
-app/                    # Next.js landing + demo dashboard (Vercel, demo mode)
-```
+- `app/[lang]/`: localized browser experience.
+- `lib/experience/`: typed local adapter, validation and run traces.
+- `design-system/`: shared visual tokens, locale controls and execution/replay presentation.
+- `app/api/`: optional server integrations; the primary demo does not require them.
 
-The task is **validatable by construction**: each field is right or wrong, so
-"correct" is an exact match, not a judge's opinion.
+Technology: Next.js 16, TypeScript, Python, Vitest, pytest, Tailwind CSS v4.
 
-## Design decisions & tradeoffs
+## Evidence and limitations
 
-1. **The student is a rule-based proxy, not a neural LoRA.** No model download,
-   no keys — the accuracy is real because it's measured, but the *absolute*
-   number belongs to the proxy. What transfers to production is the harness
-   (split, metric, break-even), not the specific extractor. Documented, not
-   hidden.
-2. **Self-host is modeled as fixed cost, not "cheaper tokens".** The break-even
-   framing — the whole point of the project — falls out of one formula. Present
-   self-host as cheaper-per-token and you hide the real decision: it only wins
-   above a volume.
-3. **Test is untouched.** Rules were written on train/val; test is only measured.
-   With a rule-based extractor this is a soft guarantee, but it keeps the eval
-   honest the same way a real fine-tuning run would.
+Invoice fields flow into two cost curves.
 
-## What did not work
+A rule-based student proxy and an assumed cost model, not a trained model benchmark.
 
-- **The proxy misses non-ISO dates and unlabeled vendors** (2/20 fields). A real
-  LoRA trained on varied formats would close that gap — and that gap is exactly
-  what the 7.5pp delta visualizes. The demo turns a weakness into the headline.
+Makes the cost crossover inspectable before recurring spend.
 
-## Run it
+**Limits:** Rule-based local proxy; it is not a production quote. These portfolio prototypes do not claim measured production impact.
 
-```bash
-# frontend demo + TS tests
-pnpm install && pnpm dev      # http://localhost:3000
-pnpm test                     # 17 vitest tests
+Inputs use fictional or anonymized examples. Optional live integrations require their own credentials and operational setup. Secrets belong in the configured secret manager, never in local secret files or Git. Use the existing `infisical run -- <command>` workflow when live integration is needed. This repository does not publish or deploy automatically as part of the local demo.
 
-# backend (authoritative math) — Python 3.12+
-cd backend && uv sync --extra dev && uv run pytest   # 4 tests, pinned fixture
-```
-
-## Stack
-
-Next.js 16 · TypeScript · Vitest · Tailwind v4 · Python 3.13 · pytest
+![Actual English demo capture](docs/images/demo.png)

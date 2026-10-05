@@ -1,0 +1,53 @@
+{
+  "repository": "destilacion",
+  "scope": "Real React component with controlled locale; Next routes not tested.",
+  "checks": [
+    {
+      "locale": "en",
+      "scenarios": [
+        {
+          "preset": "Pilot volume\n120,000 requests per month.",
+          "outcome": "Keep the API rate\n\nThe comparison assumes $6 per 1,000 requests and $1,800 monthly local capacity. Operations, maintenance and quality differences are excluded."
+        },
+        {
+          "preset": "Scale volume\n1,000,000 requests per month.",
+          "outcome": "Plan local capacity\n\nThe comparison assumes $6 per 1,000 requests and $1,800 monthly local capacity. Operations, maintenance and quality differences are excluded."
+        }
+      ],
+      "localizedValidationError": "Invoice text is required.",
+      "mobileNoOverflow": true,
+      "reducedMotion": true,
+      "keyboard": true,
+      "noRequests": true,
+      "sceneChangesWithScenario": true,
+      "editingClearsPresetAndTrace": true,
+      "resetRestoresFirstPreset": true,
+      "cancelControlPresent": true,
+      "presetRestoresAllInputs": true
+    },
+    {
+      "locale": "es",
+      "scenarios": [
+        {
+          "preset": "Volumen piloto\n120,000 solicitudes al mes.",
+          "outcome": "Mantén la tarifa API\n\nLa comparación usa una tarifa supuesta de $6 por 1,000 solicitudes y $1,800 de capacidad local mensual. No incluye operación, mantenimiento ni diferencias de calidad."
+        },
+        {
+          "preset": "Volumen a escala\n1,000,000 solicitudes al mes.",
+          "outcome": "Planea capacidad local\n\nLa comparación usa una tarifa supuesta de $6 por 1,000 solicitudes y $1,800 de capacidad local mensual. No incluye operación, mantenimiento ni diferencias de calidad."
+        }
+      ],
+      "localizedValidationError": "Introduce texto de factura y un volumen mensual entero no negativo.",
+      "mobileNoOverflow": true,
+      "reducedMotion": true,
+      "keyboard": true,
+      "noRequests": true,
+      "sceneChangesWithScenario": true,
+      "editingClearsPresetAndTrace": true,
+      "resetRestoresFirstPreset": true,
+      "cancelControlPresent": true,
+      "presetRestoresAllInputs": true
+    }
+  ],
+  "errors": []
+}
