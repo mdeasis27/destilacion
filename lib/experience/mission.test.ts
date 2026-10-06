@@ -38,3 +38,15 @@ test("the mission reveals the month in groups and stops when cancelled",async()=
   expect(ids).toEqual(run.trace.map(e=>e.id));expect(ids).toHaveLength(5);
   const c=new AbortController();c.abort();await expect(runMission({monthlyVolume:1000},c.signal,()=>{})).rejects.toThrow();
 });
+
+test("the run carries what renting cost by each day: integer cents, never down, day 30 equals the month",async()=>{
+  for(const volume of [250000,310000,1000000]){
+    const {result}=(await runMission({monthlyVolume:volume},new AbortController().signal,()=>{}));
+    expect(result.rentByDayCents).toHaveLength(30);
+    expect(result.rentByDayCents.every(Number.isInteger)).toBe(true);
+    expect(result.rentByDayCents.every((c,i,a)=>i===0||c>=a[i-1])).toBe(true);
+    expect(result.rentByDayCents[29]).toBe(result.rentCents);
+    expect(result.days.map((d,i)=>d==="served"?result.rentByDayCents[i]<=result.buyCents:result.rentByDayCents[i]>result.buyCents).every(Boolean)).toBe(true);
+  }
+  expect((await runMission({monthlyVolume:250000},new AbortController().signal,()=>{})).result.rentByDayCents.slice(0,3)).toEqual([5000,10000,15000]);
+});
