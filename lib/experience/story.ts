@@ -1,7 +1,5 @@
 import type { Heading } from "@/design-system/demo/project-story";
 
-type NodeCopy = { name: string; sub: string; analogy: string };
-
 export interface DestilacionStory {
   name: string;
   oneLiner: string;
@@ -13,7 +11,7 @@ export interface DestilacionStory {
   fit: { heading: Heading; worthLabel: string; worth: string; notLabel: string; not: string };
   proves: { heading: Heading; text: string };
   engineers: { summary: string; points: string[]; repoLabel: string };
-  scene: { title: string; caption: string; statusLabels: { active: string; danger: string; success: string }; tapeLabel: string; nodes: { requests: NodeCopy; app: NodeCopy; rent: NodeCopy; buy: NodeCopy }; tape: { served: string; rerouted: string; lost: string }; crossing: (day: number) => string };
+  scene: { title: string; caption: string; ownLabel: (buyCents: number) => string; pileLabel: string; progress: (day: number, rentCents: number) => string; dayShort: (day: number) => string; ariaLabel: (day: number, rentCents: number, buyCents: number) => string; tapeLabel: string; tape: { served: string; rerouted: string; lost: string }; crossing: (day: number) => string };
 }
 
 const n = (v: number, locale: string) => v.toLocaleString(locale);
@@ -91,15 +89,13 @@ export const STORY: Record<"en" | "es", DestilacionStory> = {
     },
     scene: {
       title: "What renting cost, day by day",
-      caption: "Watch the month fill in and see whether renting ever passes the fixed cost of your own model.",
-      statusLabels: { active: "reading", success: "cheaper so far", danger: "costing more" },
+      caption: "A rented car drives through the month and leaves one receipt a day on the pile. Watch whether the pile passes the line of your own model.",
+      ownLabel: (buy) => `Own model: ${usd(buy)}`,
+      pileLabel: "rent receipts",
+      progress: (day, rent) => day === 0 ? "Day 0" : `Day ${day} · renting is at ${usd(rent)}`,
+      dayShort: (day) => `day ${day}`,
+      ariaLabel: (day, rent, buy) => `A rented car drives through the month, one post per day, and leaves a receipt on the pile each day. By day ${day} renting has cost ${usd(rent)}, against ${usd(buy)} for your own model.`,
       tapeLabel: "Thirty days of the month",
-      nodes: {
-        requests: { name: "Invoices", sub: "per month", analogy: "the kilometres" },
-        app: { name: "Extractor", sub: "reads the fields", analogy: "you" },
-        rent: { name: "Large model", sub: "$6 per thousand", analogy: "renting" },
-        buy: { name: "Own model", sub: "$1,800 a month", analogy: "buying" },
-      },
       tape: { served: "renting still cheaper", rerouted: "day renting passed buying", lost: "paying more than buying" },
       crossing: (day) => day === 0 ? "Renting never passed $1,800" : `Renting passed $1,800 on day ${day}`,
     },
@@ -175,15 +171,13 @@ export const STORY: Record<"en" | "es", DestilacionStory> = {
     },
     scene: {
       title: "Lo que costó rentar, día por día",
-      caption: "Mira cómo se llena el mes y si rentar llega a pasar el costo fijo de tu propio modelo.",
-      statusLabels: { active: "leyendo", success: "más barato hasta ahora", danger: "costando más" },
+      caption: "Un coche rentado recorre el mes y deja un recibo por día en la pila. Mira si la pila pasa la línea de tu propio modelo.",
+      ownLabel: (buy) => `Modelo propio: ${usd(buy)}`,
+      pileLabel: "recibos de renta",
+      progress: (day, rent) => day === 0 ? "Día 0" : `Día ${day} · rentar lleva ${usd(rent)}`,
+      dayShort: (day) => `día ${day}`,
+      ariaLabel: (day, rent, buy) => `Un coche rentado recorre el mes, un poste por día, y cada día deja un recibo en la pila. Al día ${day}, rentar lleva ${usd(rent)} contra ${usd(buy)} de tu propio modelo.`,
       tapeLabel: "Treinta días del mes",
-      nodes: {
-        requests: { name: "Facturas", sub: "al mes", analogy: "los kilómetros" },
-        app: { name: "Extractor", sub: "lee los campos", analogy: "tú" },
-        rent: { name: "Modelo grande", sub: "$6 por mil", analogy: "rentar" },
-        buy: { name: "Modelo propio", sub: "$1,800 al mes", analogy: "comprar" },
-      },
       tape: { served: "rentar aún más barato", rerouted: "día que rentar pasó a comprar", lost: "pagando más que comprar" },
       crossing: (day) => day === 0 ? "Rentar nunca pasó de $1,800" : `Rentar pasó de $1,800 el día ${day}`,
     },

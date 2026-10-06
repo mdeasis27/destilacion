@@ -7,16 +7,20 @@ export function costDecision(result:Pick<ExperienceResult,"teacherCostCents"|"st
 
 export type DayStatus = "served" | "rerouted" | "lost";
 export type MissionInput = {monthlyVolume:number};
-export type MissionResult = {days:DayStatus[]; rentCents:number; buyCents:number; buyIsCheaper:boolean};
+export type MissionResult = {days:DayStatus[]; rentByDayCents:number[]; rentCents:number; buyCents:number; buyIsCheaper:boolean};
 type Event = {id:string;step:number;kind:string;messageKey:string;timestampMs:number};
 
 const DAYS = 30, STEP = 6;
 
 /** Day by day: renting still under the purchase price, the day it goes over, or days paying more. */
+/** What renting has cost by the end of each day, in cents; day 30 rounds like the monthly total. */
+export function rentByDayCents(volume:number):number[] {
+  return Array.from({length:DAYS},(_,i)=>roundedRateCents(Math.floor(volume*(i+1)/DAYS),TEACHER_CENTS_PER_1000));
+}
+
 export function monthDays(volume:number):DayStatus[] {
   let crossed=false;
-  return Array.from({length:DAYS},(_,i)=>{
-    const rentSoFar=roundedRateCents(Math.floor(volume*(i+1)/DAYS),TEACHER_CENTS_PER_1000);
+  return rentByDayCents(volume).map(rentSoFar=>{
     if(rentSoFar<=GPU_CENTS_PER_MONTH)return "served";
     if(crossed)return "lost";
     crossed=true;return "rerouted";
@@ -35,5 +39,5 @@ export async function runMission(input:MissionInput,signal:AbortSignal,onEvent:(
   }
   if(signal.aborted)throw new DOMException("Aborted","AbortError");
   const r=run.result;
-  return {input,result:{days:monthDays(input.monthlyVolume),rentCents:r.teacherCostCents,buyCents:r.studentCostCents,buyIsCheaper:costDecision(r)==="local"},trace,executionMs:performance.now()-start,mode:"local"};
+  return {input,result:{days:monthDays(input.monthlyVolume),rentByDayCents:rentByDayCents(input.monthlyVolume),rentCents:r.teacherCostCents,buyCents:r.studentCostCents,buyIsCheaper:costDecision(r)==="local"},trace,executionMs:performance.now()-start,mode:"local"};
 }
